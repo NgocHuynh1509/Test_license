@@ -156,26 +156,37 @@ const homePage = (user) =>
         });
       })();
     </script>
-    <div id="lock-overlay">
-      <div class="box">
-        <h2>🔒 Website đã bị khoá</h2>
-        <p>Vui lòng tải lại trang để tiếp tục.</p>
-        <button onclick="location.reload()">Tải lại trang</button>
-      </div>
-    </div>
     <script>
       (function(){
-        const timer = setInterval(async () => {
+        let done = false;
+
+        // Khi bị khoá: XOÁ HẲN nội dung trang (không chỉ phủ lên),
+        // nên xoá lớp thông báo cũng không còn gì để xem.
+        function showLocked() {
+          if (done) return;
+          done = true;
+          clearInterval(timer);
+          document.body.innerHTML =
+            '<div class="card">' +
+            '<h1>🔒 Website đã bị khoá</h1>' +
+            '<p>Vui lòng tải lại trang để tiếp tục.</p>' +
+            '<button onclick="location.reload()">Tải lại trang</button>' +
+            '</div>';
+        }
+
+        async function check() {
+          if (done) return;
           try {
             const r = await fetch('/api/status', { cache: 'no-store' });
             const d = await r.json();
-            if (d.locked) {
-              document.getElementById('status-tag').textContent = '🔴 Đã bị khoá';
-              document.getElementById('lock-overlay').classList.add('show');
-              clearInterval(timer);
-            }
+            if (d.locked) showLocked();
           } catch (e) {}
-        }, 2000);
+        }
+
+        const timer = setInterval(check, 2000);
+        window.addEventListener('focus', check);
+        document.addEventListener('visibilitychange', check);
+        document.addEventListener('click', check, true); // bấm tab/nút nào cũng kiểm tra ngay
       })();
     </script>`);
 
