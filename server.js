@@ -80,7 +80,8 @@ function send(res, code, body, type = 'text/html; charset=utf-8', headers = {}) 
   res.end(body);
 }
 
-const json = (res, code, obj) => send(res, code, JSON.stringify(obj), 'application/json');
+const json = (res, code, obj) =>
+  send(res, code, JSON.stringify(obj), 'application/json', { 'Cache-Control': 'no-store' });
 
 const esc = (s) =>
   String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -95,6 +96,16 @@ const style = `
   button{width:100%;padding:10px;border:0;border-radius:8px;background:#2563eb;color:#fff;font-size:15px;cursor:pointer}
   .err{color:#dc2626;font-size:14px;margin-bottom:8px}
   a{color:#2563eb}
+  .tabs{display:flex;gap:6px;margin-bottom:16px;border-bottom:1px solid #e5e7eb}
+  .tab-btn{width:auto;padding:8px 14px;background:none;color:#4b5563;border-radius:8px 8px 0 0;font-size:14px}
+  .tab-btn.active{background:#eff6ff;color:#2563eb;font-weight:600}
+  .tab-panel{display:none}
+  .tab-panel.active{display:block}
+  #lock-overlay{display:none;position:fixed;inset:0;z-index:9999;background:rgba(17,24,39,.85);align-items:center;justify-content:center}
+  #lock-overlay.show{display:flex}
+  #lock-overlay .box{background:#fff;padding:28px;border-radius:12px;width:320px;text-align:center}
+  #lock-overlay h2{margin:0 0 8px;font-size:18px}
+  #lock-overlay p{margin:0 0 16px;color:#4b5563;font-size:14px}
 </style>`;
 
 const page = (title, inner) =>
@@ -113,8 +124,60 @@ const loginPage = (err = '') =>
 const homePage = (user) =>
   page('Trang chủ', `
     <h1>Trang chủ</h1>
-    <p>Xin chào, <b>${esc(user)}</b>!</p>
-    <p><a href="/logout">Đăng xuất</a></p>`);
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="tab-overview">Tổng quan</button>
+      <button class="tab-btn" data-tab="tab-info">Thông tin</button>
+    </div>
+
+    <div id="tab-overview" class="tab-panel active">
+      <p>Xin chào, <b>${esc(user)}</b>!</p>
+      <p>🕒 Trang tải lúc: <b>${new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}</b></p>
+      <p>Trạng thái: <b id="status-tag">🟢 Đang mở</b></p>
+    </div>
+
+    <div id="tab-info" class="tab-panel">
+      <p>👤 Tài khoản: <b>${esc(user)}</b></p>
+      <p>🔁 Số lần chuyển tab: <b id="tab-count">0</b></p>
+      <p>Tab này chỉ để test: chuyển qua lại giữa các tab rồi khoá web để xem nút tải lại.</p>
+    </div>
+
+    <p><a href="/logout">Đăng xuất</a></p>
+    <script>
+      (function(){
+        let count = 0;
+        document.querySelectorAll('.tab-btn').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            document.querySelectorAll('.tab-btn').forEach((b) => b.classList.remove('active'));
+            document.querySelectorAll('.tab-panel').forEach((p) => p.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById(btn.dataset.tab).classList.add('active');
+            document.getElementById('tab-count').textContent = ++count;
+          });
+        });
+      })();
+    </script>
+    <div id="lock-overlay">
+      <div class="box">
+        <h2>🔒 Website đã bị khoá</h2>
+        <p>Vui lòng tải lại trang để tiếp tục.</p>
+        <button onclick="location.reload()">Tải lại trang</button>
+      </div>
+    </div>
+    <script>
+      (function(){
+        const timer = setInterval(async () => {
+          try {
+            const r = await fetch('/api/status', { cache: 'no-store' });
+            const d = await r.json();
+            if (d.locked) {
+              document.getElementById('status-tag').textContent = '🔴 Đã bị khoá';
+              document.getElementById('lock-overlay').classList.add('show');
+              clearInterval(timer);
+            }
+          } catch (e) {}
+        }, 2000);
+      })();
+    </script>`);
 
 const lockedPage = () =>
   page('Website đã bị khoá', `
