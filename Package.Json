@@ -1,0 +1,12 @@
+{
+  "name": "lockable-web",
+  "version": "1.0.0",
+  "description": "Web đăng nhập đơn giản có khoá từ xa bằng key",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
